@@ -1,0 +1,2 @@
+roc_auc_train,roc_auc_valid,pr_auc_train,pr_auc_valid,recall_valid,precision_valid,f1_valid,business_cost_valid,business_cost_per_client_valid,best_threshold,best_cost,business_cost_baseline,business_cost_saved,business_cost_saved_pct,roc_auc_gap,pr_auc_gap
+0.8180870255878383,0.7843845152296576,0.3142257062864996,0.2844896520595843,0.7013091641490433,0.183999154512788,0.29151492318640376,30272,0.49220363234313774,0.5199999999999999,30192,49650,19378,0.39029204431017117,0.033702510358180726,0.029736054226915276
