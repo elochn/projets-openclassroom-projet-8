@@ -48,7 +48,7 @@ jobs:
 
       - name: Run tests
         run: |
-          pytest tests/
+          python -m pytest tests/
         env:
           ENV: test
   
