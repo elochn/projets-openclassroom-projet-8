@@ -17,12 +17,12 @@ def test_health_returns_model_info():
 
     assert body["n_features"] == 60
     print(body["n_features"])
-    
+
     assert body["threshold"] == 0.54
 
 
 def test_predict_returns_score_and_decision():
-    payload = {"AMT_CREDIT": 500000.0, "DAYS_BIRTH": -15000, "CODE_GENDER": "F"}
+    payload = {"AMT_CREDIT": 500000.0, "AMT_ANNUITY": 25000.0, "DAYS_BIRTH": -15000, "CODE_GENDER": "F"}
 
     with TestClient(app) as client:
         response = client.post(

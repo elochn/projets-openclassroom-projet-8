@@ -4,6 +4,9 @@ import joblib
 import pandas as pd
 from fastapi import FastAPI
 
+# The class that describes and validates the request body
+from schema import ClientData
+
 # Filled once at startup, then read by every request
 state = {}
 
@@ -36,9 +39,10 @@ def features():
         "features": state["features"]
     }
 
-@app.post("/predict") # We use the POST method because it is the caller who sends the data (the client) in the request body
-def predict(client: dict):   # We will require input in the form of a dictionary
-    X = pd.DataFrame([client], columns=state["features"])
+@app.post("/predict")
+def predict(client: ClientData):
+    values = client.model_dump(exclude_none=True)
+    X = pd.DataFrame([values], columns=state["features"])
     proba = float(state["pipe"].predict_proba(X)[0, 1])
     decision = "refused" if proba >= state["threshold"] else "accepted"
     return {
