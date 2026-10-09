@@ -5,3 +5,7 @@ lightgbm==4.6.0
 pandas==2.3.3
 numpy==2.3.5
 joblib==1.5.3
+fastapi==0.142.2
+httpx==0.28.1
+pytest==9.1.1
+uvicorn==0.54.0
