@@ -51,5 +51,18 @@ jobs:
           python -m pytest tests/
         env:
           ENV: test
-  
-  
+    
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build the Docker image
+        run: docker build -t credit-scoring-api .
+
+      - name: Start the container and call the API
+        run: |
+          docker run -d -p 7860:7860 credit-scoring-api
+          curl --fail --retry 10 --retry-delay 2 --retry-all-errors http://127.0.0.1:7860/
