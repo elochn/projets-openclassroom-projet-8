@@ -66,3 +66,13 @@ jobs:
         run: |
           docker run -d -p 7860:7860 credit-scoring-api
           curl --fail --retry 10 --retry-delay 2 --retry-all-errors http://127.0.0.1:7860/
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Trigger the deployment on Render
+        run: curl --fail "$RENDER_DEPLOY_HOOK_URL"
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
