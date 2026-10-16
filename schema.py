@@ -1,4 +1,128 @@
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict, Field
+
+# Categories learned by the model's encoder during training
+CODE_GENDER_VALUES = Literal[
+    "F",
+    "M",
+    "XNA",
+]
+NAME_EDUCATION_TYPE_VALUES = Literal[
+    "Academic degree",
+    "Higher education",
+    "Incomplete higher",
+    "Lower secondary",
+    "Secondary / secondary special",
+]
+NAME_FAMILY_STATUS_VALUES = Literal[
+    "Civil marriage",
+    "Married",
+    "Separated",
+    "Single / not married",
+    "Unknown",
+    "Widow",
+]
+FLAG_OWN_CAR_VALUES = Literal[
+    "N",
+    "Y",
+]
+NAME_CONTRACT_TYPE_VALUES = Literal[
+    "Cash loans",
+    "Revolving loans",
+]
+OCCUPATION_TYPE_VALUES = Literal[
+    "Accountants",
+    "Cleaning staff",
+    "Cooking staff",
+    "Core staff",
+    "Drivers",
+    "HR staff",
+    "High skill tech staff",
+    "IT staff",
+    "Laborers",
+    "Low-skill Laborers",
+    "Managers",
+    "Medicine staff",
+    "Private service staff",
+    "Realty agents",
+    "Sales staff",
+    "Secretaries",
+    "Security staff",
+    "Unknown",
+    "Waiters/barmen staff",
+]
+ORGANIZATION_TYPE_VALUES = Literal[
+    "Advertising",
+    "Agriculture",
+    "Bank",
+    "Business Entity Type 1",
+    "Business Entity Type 2",
+    "Business Entity Type 3",
+    "Cleaning",
+    "Construction",
+    "Culture",
+    "Electricity",
+    "Emergency",
+    "Government",
+    "Hotel",
+    "Housing",
+    "Industry: type 1",
+    "Industry: type 10",
+    "Industry: type 11",
+    "Industry: type 12",
+    "Industry: type 13",
+    "Industry: type 2",
+    "Industry: type 3",
+    "Industry: type 4",
+    "Industry: type 5",
+    "Industry: type 6",
+    "Industry: type 7",
+    "Industry: type 8",
+    "Industry: type 9",
+    "Insurance",
+    "Kindergarten",
+    "Legal Services",
+    "Medicine",
+    "Military",
+    "Mobile",
+    "Other",
+    "Police",
+    "Postal",
+    "Realtor",
+    "Religion",
+    "Restaurant",
+    "School",
+    "Security",
+    "Security Ministries",
+    "Self-employed",
+    "Services",
+    "Telecom",
+    "Trade: type 1",
+    "Trade: type 2",
+    "Trade: type 3",
+    "Trade: type 4",
+    "Trade: type 5",
+    "Trade: type 6",
+    "Trade: type 7",
+    "Transport: type 1",
+    "Transport: type 2",
+    "Transport: type 3",
+    "Transport: type 4",
+    "University",
+    "XNA",
+]
+NAME_INCOME_TYPE_VALUES = Literal[
+    "Businessman",
+    "Commercial associate",
+    "Maternity leave",
+    "Pensioner",
+    "State servant",
+    "Student",
+    "Unemployed",
+    "Working",
+]
+
 
 # Describes the JSON body expected by POST /predict:
 class ClientData(BaseModel):
@@ -19,9 +143,9 @@ class ClientData(BaseModel):
     # A missing value is imputed by the pipeline.
     # Days of employment before the application: zero or negative
     DAYS_EMPLOYED: float | None = Field(default=None, le=0) # le = "less or equal"
-    EXT_SOURCE_2: float | None = None
-    EXT_SOURCE_3: float | None = None
-    EXT_SOURCE_1: float | None = None
+    EXT_SOURCE_2: float | None = Field(default=None, ge=0, le=1)
+    EXT_SOURCE_3: float | None = Field(default=None, ge=0, le=1)
+    EXT_SOURCE_1: float | None = Field(default=None, ge=0, le=1)
     PAYMENT_RATE: float | None = None
     AMT_GOODS_PRICE: float | None = None
     PREV_DAYS_LATE_MEAN: float | None = None
@@ -69,11 +193,11 @@ class ClientData(BaseModel):
     PREV_MONTHS_BALANCE_SUM: float | None = None
 
     # --- Optional categorical fields (text) ---
-    CODE_GENDER: str | None = None
-    NAME_EDUCATION_TYPE: str | None = None
-    NAME_FAMILY_STATUS: str | None = None
-    FLAG_OWN_CAR: str | None = None
-    NAME_CONTRACT_TYPE: str | None = None
-    OCCUPATION_TYPE: str | None = None
-    ORGANIZATION_TYPE: str | None = None
-    NAME_INCOME_TYPE: str | None = None
+    CODE_GENDER: CODE_GENDER_VALUES | None = None
+    NAME_EDUCATION_TYPE: NAME_EDUCATION_TYPE_VALUES | None = None
+    NAME_FAMILY_STATUS: NAME_FAMILY_STATUS_VALUES | None = None
+    FLAG_OWN_CAR: FLAG_OWN_CAR_VALUES | None = None
+    NAME_CONTRACT_TYPE: NAME_CONTRACT_TYPE_VALUES | None = None
+    OCCUPATION_TYPE: OCCUPATION_TYPE_VALUES | None = None
+    ORGANIZATION_TYPE: ORGANIZATION_TYPE_VALUES | None = None
+    NAME_INCOME_TYPE: NAME_INCOME_TYPE_VALUES | None = None
