@@ -80,3 +80,13 @@ def test_text_instead_of_number_is_rejected():
     assert response.status_code == 422
     error = response.json()["detail"][0]
     assert error["loc"] == ["body", "DAYS_BIRTH"]
+
+def test_unknown_category_is_rejected():
+    payload = {"AMT_CREDIT": 500000.0, "AMT_ANNUITY": 25000.0, "DAYS_BIRTH": -15000, "NAME_CONTRACT_TYPE": "Cash loan"}
+
+    with TestClient(app) as client:
+        response = client.post("/predict", json=payload)
+
+    assert response.status_code == 422
+    error = response.json()["detail"][0]
+    assert error["loc"] == ["body", "NAME_CONTRACT_TYPE"]
