@@ -228,3 +228,4 @@ mlflow.db
 logs/
 # macOS
 .DS_Store
+reports/
