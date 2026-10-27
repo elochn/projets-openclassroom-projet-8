@@ -81,12 +81,9 @@ def features():
         "/predict", 
         dependencies=[Depends(verify_api_key)], 
         responses={
-            400: {"Malformed JSON or missing field"}, 
+            400: {"description": "Malformed JSON or missing field"}, 
             401: {"description": "Missing or invalid token"}, 
-            403: {"description": "Authenticated but lacks permission"}, 
-            404: {"description": "Resource never existed"}, 
             422: {"description": "Valid input but fails business logic"}, 
-            500: {"description": "Internal Server Error"}, 
         }
 )
 def predict(client: ClientData):
