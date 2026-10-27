@@ -1,14 +1,16 @@
 import json
 import logging
 import os
+import secrets
 import time
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 import joblib
 import pandas as pd
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, HTTPException, Request, Security
 from fastapi.exception_handlers import request_validation_exception_handler
 from fastapi.exceptions import RequestValidationError
+from fastapi.security import APIKeyHeader
 
 # The class that describes and validates the request body
 from schema import ClientData
@@ -36,12 +38,19 @@ async def lifespan(app: FastAPI):
         state["features"] = f.read().splitlines()
     metrics = pd.read_csv("model/metrics.csv")
     state["threshold"] = round(float(metrics.loc[0, "best_threshold"]), 2)
+    state["api_key"] = os.environ["API_KEY"]
     yield
     # Runs once, when the server stops
     state.clear()
 
 
 app = FastAPI(title="Credit Scoring API", lifespan=lifespan)
+
+api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
+
+def verify_api_key(key: str | None = Security(api_key_header)):
+    if key is None or not secrets.compare_digest(key, state["api_key"]):
+        raise HTTPException(status_code=401, detail="Invalid or missing API key")
 
 # Called by FastAPI whenever a request body breaks a rule of ClientData
 @app.exception_handler(RequestValidationError)
@@ -52,7 +61,6 @@ async def log_invalid_request(request: Request, exc: RequestValidationError):
         "errors": [{"field": e["loc"][-1], "message": e["msg"]} for e in exc.errors()],
     })
     return await request_validation_exception_handler(request, exc)
-
 
 
 @app.get("/")
@@ -69,7 +77,18 @@ def features():
         "features": state["features"]
     }
 
-@app.post("/predict")
+@app.post(
+        "/predict", 
+        dependencies=[Depends(verify_api_key)], 
+        responses={
+            400: {"Malformed JSON or missing field"}, 
+            401: {"description": "Missing or invalid token"}, 
+            403: {"description": "Authenticated but lacks permission"}, 
+            404: {"description": "Resource never existed"}, 
+            422: {"description": "Valid input but fails business logic"}, 
+            500: {"description": "Internal Server Error"}, 
+        }
+)
 def predict(client: ClientData):
     start = time.perf_counter()
     values = client.model_dump(exclude_none=True)

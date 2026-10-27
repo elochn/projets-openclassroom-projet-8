@@ -64,7 +64,7 @@ jobs:
 
       - name: Start the container and call the API
         run: |
-          docker run -d -p 7860:7860 credit-scoring-api
+          docker run -d -p 7860:7860 -e API_KEY=ci-test-key credit-scoring-api
           curl --fail --retry 10 --retry-delay 2 --retry-all-errors http://127.0.0.1:7860/
 
   deploy:

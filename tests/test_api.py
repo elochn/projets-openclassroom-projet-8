@@ -1,5 +1,9 @@
+import os
 import pytest
 from fastapi.testclient import TestClient # a mock browser provided by FastAPI. It sends requests to your API without running Uvicorn.
+
+os.environ["API_KEY"] = "test-key"
+HEADERS = {"X-API-Key": "test-key"}
 
 from app import app 
 
@@ -26,8 +30,8 @@ def test_predict_returns_score_and_decision():
 
     with TestClient(app) as client:
         response = client.post(
-            "/predict", json=payload # equivalent to the “Execute” button in Swagger, 
-            )                        # with `payload` as the request body
+            "/predict", json=payload, headers=HEADERS   # equivalent to the “Execute” button in Swagger, 
+            )                                           # with `payload` as the request body
 
     assert response.status_code == 200
     body = response.json()
@@ -40,7 +44,7 @@ def test_missing_required_field_is_rejected():
     payload = {"AMT_CREDIT": 500000.0, "DAYS_BIRTH": -15000}
 
     with TestClient(app) as client:
-        response = client.post("/predict", json=payload)
+        response = client.post("/predict", json=payload, headers=HEADERS)
 
     assert response.status_code == 422
     error = response.json()["detail"][0]
@@ -53,7 +57,7 @@ def test_negative_age_is_rejected():
     payload = {"AMT_CREDIT": 500000.0, "AMT_ANNUITY": 25000.0, "DAYS_BIRTH": 15000}  
 
     with TestClient(app) as client:
-        response = client.post("/predict", json=payload)
+        response = client.post("/predict", json=payload, headers=HEADERS)
 
     assert response.status_code == 422
     error = response.json()["detail"][0]
@@ -64,7 +68,7 @@ def test_zero_credit_is_rejected():
     payload = {"AMT_CREDIT": 0, "AMT_ANNUITY": 25000.0, "DAYS_BIRTH": -15000}
 
     with TestClient(app) as client:
-        response = client.post("/predict", json=payload)
+        response = client.post("/predict", json=payload, headers=HEADERS)
 
     assert response.status_code == 422
     error = response.json()["detail"][0]
@@ -75,7 +79,7 @@ def test_text_instead_of_number_is_rejected():
     payload = {"AMT_CREDIT": 500000.0, "AMT_ANNUITY": 25000.0, "DAYS_BIRTH": "abc"}
 
     with TestClient(app) as client:
-        response = client.post("/predict", json=payload)
+        response = client.post("/predict", json=payload, headers=HEADERS)
 
     assert response.status_code == 422
     error = response.json()["detail"][0]
@@ -85,8 +89,25 @@ def test_unknown_category_is_rejected():
     payload = {"AMT_CREDIT": 500000.0, "AMT_ANNUITY": 25000.0, "DAYS_BIRTH": -15000, "NAME_CONTRACT_TYPE": "Cash loan"}
 
     with TestClient(app) as client:
-        response = client.post("/predict", json=payload)
+        response = client.post("/predict", json=payload, headers=HEADERS)
 
     assert response.status_code == 422
     error = response.json()["detail"][0]
     assert error["loc"] == ["body", "NAME_CONTRACT_TYPE"]
+
+def test_missing_api_key_is_rejected():
+    payload = {"AMT_CREDIT": 500000.0, "AMT_ANNUITY": 25000.0, "DAYS_BIRTH": -15000}
+
+    with TestClient(app) as client:
+        response = client.post("/predict", json=payload)
+
+    assert response.status_code == 401
+
+
+def test_wrong_api_key_is_rejected():
+    payload = {"AMT_CREDIT": 500000.0, "AMT_ANNUITY": 25000.0, "DAYS_BIRTH": -15000}
+
+    with TestClient(app) as client:
+        response = client.post("/predict", json=payload, headers={"X-API-Key": "wrong-key"})
+
+    assert response.status_code == 401
