@@ -29,6 +29,13 @@ def log_call(record):
     record["timestamp"] = datetime.now(timezone.utc).isoformat()
     logger.info(json.dumps(record))
 
+def generalise(values):
+    stored = dict(values)
+    stored["DAYS_BIRTH"] = round(stored["DAYS_BIRTH"] / 365) * 365
+    for column in ["AMT_CREDIT", "AMT_ANNUITY", "AMT_GOODS_PRICE"]:
+        if column in stored:
+            stored[column] = round(stored[column] / 1000) * 1000
+    return stored
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -57,7 +64,6 @@ def verify_api_key(key: str | None = Security(api_key_header)):
 async def log_invalid_request(request: Request, exc: RequestValidationError):
     log_call({
         "status_code": 422,
-        "inputs": exc.body,
         "errors": [{"field": e["loc"][-1], "message": e["msg"]} for e in exc.errors()],
     })
     return await request_validation_exception_handler(request, exc)
@@ -93,7 +99,7 @@ def predict(client: ClientData):
     latency_ms = (time.perf_counter() - start) * 1000
     log_call({
         "status_code": 200,
-        "inputs": values,
+        "inputs": generalise(values),
         "probability_default": round(proba, 4),
         "decision": decision,
         "latency_ms": round(latency_ms, 2),
