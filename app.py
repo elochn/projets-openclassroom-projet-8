@@ -6,6 +6,7 @@ import time
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 import joblib
+import numpy as np
 import pandas as pd
 from fastapi import Depends, FastAPI, HTTPException, Request, Security
 from fastapi.exception_handlers import request_validation_exception_handler
@@ -37,10 +38,32 @@ def generalise(values):
             stored[column] = round(stored[column] / 1000) * 1000
     return stored
 
+
+def preprocess(values):
+    x = np.array([values.get(column, np.nan) for column in state["num_cols"]], dtype=float)
+    missing = np.isnan(x)
+    numeric = np.concatenate([np.where(missing, state["medians"], x), missing[state["flagged"]]])
+    numeric = (numeric - state["mean"]) / state["scale"]
+    onehot = [categories == values.get(column, "Unknown") for column, categories in zip(state["cat_cols"], state["categories"])]
+    return np.concatenate([numeric, *onehot]).reshape(1, -1)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Runs once, when the server starts
-    state["pipe"] = joblib.load("model/model.joblib")
+    pipe = joblib.load("model/model.joblib")
+    preprocessing = pipe.named_steps["preprocessing"]
+    numeric = preprocessing.named_transformers_["num"]
+    categorical = preprocessing.named_transformers_["cat"]
+    state["num_cols"] = preprocessing.transformers_[0][2]
+    state["cat_cols"] = preprocessing.transformers_[1][2]
+    state["medians"] = numeric.named_steps["imputer"].statistics_
+    state["flagged"] = numeric.named_steps["imputer"].indicator_.features_
+    state["mean"] = numeric.named_steps["scaler"].mean_
+    state["scale"] = numeric.named_steps["scaler"].scale_
+    state["categories"] = categorical.named_steps["encoder"].categories_
+    state["booster"] = pipe.named_steps["model"].booster_
+
     with open("model/features.txt") as f:
         state["features"] = f.read().splitlines()
     metrics = pd.read_csv("model/metrics.csv")
@@ -93,8 +116,8 @@ def features():
 def predict(client: ClientData):
     start = time.perf_counter()
     values = client.model_dump(exclude_none=True)
-    X = pd.DataFrame([values], columns=state["features"])
-    proba = float(state["pipe"].predict_proba(X)[0, 1])
+    X = preprocess(values)
+    proba = float(state["booster"].predict(X)[0])
     decision = "refused" if proba >= state["threshold"] else "accepted"
     latency_ms = (time.perf_counter() - start) * 1000
     log_call({
