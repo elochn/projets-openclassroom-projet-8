@@ -234,7 +234,7 @@ itself when scoring one client at a time.
 | | Before | After (deployed) |
 |---|---|---|
 | Inference per client (`benchmark.py`, screenshot 10) | 1.903 ms | 0.060 ms (32 times faster) |
-| Full request, 300 requests under cProfile (screenshots 09 and 11) | 6.0 ms | 1.9 ms (3 times faster) |
+| Full request, 300 requests under cProfile (screenshots 09 and 11) | 6.3 ms | 1.0 ms (6 times faster) |
 | Function calls for 300 requests | 7.4 million | 0.9 million |
 
 After the optimisation, the largest remaining part of `/predict` is writing the
@@ -242,10 +242,10 @@ log line (26 %), which the monitoring needs.
 
 | Model run by (`onnx_benchmark.py`, screenshot 12) | Time per client | Largest probability difference | Decisions changed |
 |---|---|---|---|
-| LightGBM (deployed) | 0.145 ms | 0 | 0 / 48 744 |
-| ONNX Runtime | 0.065 ms | 0.0122 | 0 / 48 744 |
+| LightGBM (deployed) | 0.139 ms | 0 | 0 / 48 744 |
+| ONNX Runtime | 0.070 ms | 0.0122 | 0 / 48 744 |
 
-ONNX Runtime saves about 0.08 ms per call, invisible next to the network time of
+ONNX Runtime saves about 0.07 ms per call, invisible next to the network time of
 a call to Render, but it computes in float32 (probabilities change by up to
 0.0122), adds four libraries to the image and a conversion step at every
 retraining. It was not deployed.

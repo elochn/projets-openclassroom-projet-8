@@ -111,3 +111,10 @@ def test_wrong_api_key_is_rejected():
         response = client.post("/predict", json=payload, headers={"X-API-Key": "wrong-key"})
 
     assert response.status_code == 401
+
+def test_features_returns_the_60_columns():
+    with TestClient(app) as client:
+        response = client.get("/features")
+
+    assert response.status_code == 200
+    assert len(response.json()["features"]) == 60

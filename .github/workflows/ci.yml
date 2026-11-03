@@ -48,7 +48,7 @@ jobs:
 
       - name: Run tests
         run: |
-          python -m pytest tests/
+          python -m pytest tests/ --cov=app --cov=schema --cov-report=term-missing
         env:
           ENV: test
     
