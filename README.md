@@ -34,6 +34,9 @@ the upstream feature pipeline (client-level aggregations of the 7 Home Credit ta
     purge_logs.py                deletes logs older than 90 days
     screenshots/                 storage, drift reports and dashboard
     notebooks/                   training pipeline (exploration, aggregation, modelling, SHAP)
+    profile_api.py               profiles /predict with cProfile
+    benchmark.py                 old vs optimised prediction: accuracy and speed
+    onnx_benchmark.py            ONNX Runtime tests
 
 ## Live API
 
@@ -195,8 +198,84 @@ the GDPR. Measures taken:
   gives the client the right to a human review; the score should support a
   credit officer, not replace them.
 
+## Optimisation
+
+### Bottleneck
+
+The monitoring logs showed a median `latency_ms` of 3.9 ms per call, measured
+around the prediction only. To find where this time goes, `profile_api.py` sends
+300 production clients to `/predict` and profiles them with cProfile
+(screenshot 09). Share of the time spent in `/predict`:
+
+| Part | Share |
+|---|---|
+| scikit-learn pipeline | 85 % |
+| of which preprocessing (`ColumnTransformer`: imputation, scaling, one-hot) | 66 % |
+| of which LightGBM model | 16 % |
+
+The bottleneck is the preprocessing, not the model. scikit-learn validates and
+converts the data at every step, which costs far more than the computation
+itself when scoring one client at a time.
+
+### Optimisations tested
+
+1. **Code: preprocessing rewritten with numpy (deployed).** At startup, the API
+   reads the values learned by the pipeline (medians, missing-value indicators,
+   means and standard deviations, categories) and applies them with numpy; the
+   LightGBM booster then scores the result directly. Input data is already
+   validated by pydantic, so the repeated checks of scikit-learn are not needed.
+2. **ONNX Runtime on the whole pipeline: impossible.** `skl2onnx` cannot convert
+   `SimpleImputer(add_indicator=True)`.
+3. **ONNX Runtime on the model only (quantisation to float32): not deployed.**
+   It keeps the numpy preprocessing and runs LightGBM in ONNX Runtime.
+
+### Results
+
+| | Before | After (deployed) |
+|---|---|---|
+| Inference per client (`benchmark.py`, screenshot 10) | 1.903 ms | 0.060 ms (32 times faster) |
+| Full request, 300 requests under cProfile (screenshots 09 and 11) | 6.0 ms | 1.9 ms (3 times faster) |
+| Function calls for 300 requests | 7.4 million | 0.9 million |
+
+After the optimisation, the largest remaining part of `/predict` is writing the
+log line (26 %), which the monitoring needs.
+
+| Model run by (`onnx_benchmark.py`, screenshot 12) | Time per client | Largest probability difference | Decisions changed |
+|---|---|---|---|
+| LightGBM (deployed) | 0.145 ms | 0 | 0 / 48 744 |
+| ONNX Runtime | 0.065 ms | 0.0122 | 0 / 48 744 |
+
+ONNX Runtime saves about 0.08 ms per call, invisible next to the network time of
+a call to Render, but it computes in float32 (probabilities change by up to
+0.0122), adds four libraries to the image and a conversion step at every
+retraining. It was not deployed.
+
+### No regression
+
+`benchmark.py` compares the old and the optimised predictions on the 48 744
+production clients: the largest probability difference is 0.0 and no decision
+changes. Every client gets exactly the same probability, so the accuracy
+(ROC AUC, business cost) and the refusal rate of every group (gender, age…)
+are unchanged: the optimisation cannot introduce a bias. The test expecting a
+probability of 0.4023 still passes.
+
+### Final configuration
+
+- **Libraries:** numpy and LightGBM only, already in `requirements.txt`; no new
+  dependency in the Docker image. ONNX tools stay in
+  `requirements-optimisation.txt`, used for testing only.
+- **Software:** Python 3.12 slim image, FastAPI and uvicorn, deployed by the
+  CI/CD pipeline; the `build` job starts the optimised image, which validates
+  its compatibility with production.
+- **Hardware:** CPU only (Render free instance). A GPU brings nothing for a
+  tree model scoring one client at a time: moving the data to the GPU would take
+  longer than the 0.06 ms of computation.
+- **Limit:** `preprocess` mirrors the fitted pipeline. If the preprocessing
+  changes at a retraining, it must be updated, and `benchmark.py` checks that
+  both give the same probabilities.
+
 ## Status
 
 Done: API, input validation, authentication, tests, Docker image, CI/CD pipeline,
-deployment, logging, drift and operational monitoring, dashboard.
-In progress: profiling and optimisation.
+deployment, logging, drift and operational monitoring, dashboard, profiling and
+optimisation.
