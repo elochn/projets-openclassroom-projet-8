@@ -53,6 +53,7 @@ with TestClient(app):
     print(f"  decisions changed: {changed} / {len(payloads)}")
 
     for name, predict in [("  model in LightGBM (deployed)", numpy_booster), ("  model in ONNX Runtime", numpy_onnx)]:
+        start = time.perf_counter()
         for payload in payloads[:N_TIMED]:
             predict(payload)
         print(f"{name}: {(time.perf_counter() - start) / N_TIMED * 1000:.3f} ms per client")
