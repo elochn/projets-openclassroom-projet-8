@@ -1,0 +1,5 @@
+-r requirements.txt
+onnx==1.23.2
+onnxmltools==1.16.0
+onnxruntime==1.31.0
+skl2onnx==1.20.0
