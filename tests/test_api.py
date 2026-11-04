@@ -1,11 +1,14 @@
 import os
+import logging
 import pytest
 from fastapi.testclient import TestClient # a mock browser provided by FastAPI. It sends requests to your API without running Uvicorn.
 
 os.environ["API_KEY"] = "test-key"
 HEADERS = {"X-API-Key": "test-key"}
 
-from app import app 
+from app import app, logger
+
+logger.handlers = [logging.NullHandler()]
 
 
 def test_health_returns_model_info():

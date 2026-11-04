@@ -138,6 +138,30 @@ normalised Wasserstein distance for numeric columns, Jensen-Shannon distance for
 categorical ones. A column drifts when its score is at least 0.1. Evidently flags
 a drift of the whole dataset when at least 50 % of the columns drift.
 
+### Database storage
+
+In production, the log file is not enough: the disk of a container on Render is
+erased at every deployment. The proposed storage is a PostgreSQL database
+(open source, available as a managed service on Supabase or Render):
+
+- `storage/schema.sql` creates the `api_calls` table (one row per call, the 60
+  inputs stored in a JSONB column) and the `daily_monitoring` view (calls, error
+  rate, median and p95 latency, refusal rate per day).
+- `storage/load_logs.py` loads `logs/api_calls.jsonl` into the table; running it
+  again does not create duplicates.
+
+      export DATABASE_URL=postgresql://user:password@host:5432/database
+      python storage/load_logs.py
+      psql "$DATABASE_URL" -c "SELECT * FROM daily_monitoring;"
+
+This was tested against a local PostgreSQL 18 (screenshot 14): the 4 000 calls
+take about 6 MB, about 1.5 KB per call. In a real deployment, the API would
+insert each call directly, the database URL would be a Render environment
+variable like the API key, the database would be hosted in the EU, and the
+90-day retention would become a nightly query:
+
+      DELETE FROM api_calls WHERE called_at < now() - interval '90 days';
+
 ## Drift study
 
 | | Window 1 (normal) | Window 2 (simulated drift) |
